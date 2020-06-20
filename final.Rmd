@@ -1,0 +1,432 @@
+---
+title: "FinalPaper"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Needed for RTools to be properly found
+Sys.setenv(PATH = paste("C:/Rtools/bin", Sys.getenv("PATH"), sep=";"))
+Sys.setenv(BINPREF = "C:/Rtools/mingw_$(WIN)/bin/")
+
+#install.packages("xlsx")
+#library("xlsx")
+#install.packages("Unicode")
+library("Unicode")
+
+#See writing to file section for more info
+printer <- function(text.l) {
+  output <- c()
+  for (line in text.l) {
+    for (i in line) {
+      if (grepl("U\\+.*", i)) {
+        output <- append(output, iconv(intToUtf8(as.u_char(i)), to = "UTF-8"))
+      } else{
+        output <- append(output, i)
+      }
+      output <- append(output, " ")
+      
+    }
+    output <- append(output, "\n")
+    
+  }
+  
+  cat(output, file = "output.txt", sep = '')
+}
+
+```
+
+
+```{r Data Conversion}
+results <- read.csv('/data/amt_results.csv', row.names = 1, stringsAsFactors = FALSE)
+
+
+conversion <- scan('/data/conversion.txt', what="char", sep = "\n")
+conversion <- conversion[-(1:13)]
+conversion.l <- strsplit(conversion, split = " ")
+
+#conversion.l[[grep("E05A", conversion.l)]][2]
+
+emojitranslate <- function(hexcode){
+  return(conversion.l[[grep(hexcode, conversion.l)]][2])
+}
+
+# emojitranslate("E05A")
+
+# Really slow
+
+for(i in 1:nrow(results)){
+  cell = as.character(results[i,3])
+  if (i != ""){
+    temp <- unlist(strsplit(cell, split = ";"))
+    temp <- sapply(temp, emojitranslate)
+    cell <- paste(temp, sep = ";", collapse =";")
+    results[i, 3] <- cell  
+  }
+}
+
+write.csv(results, '/data/amt_results_unicode.csv')
+
+
+results <- read.csv('/data/final_translations.csv', row.names = 1, stringsAsFactors = FALSE)
+for(i in 1:nrow(results)){
+  cell = as.character(results[i,3])
+  if (i != ""){
+    temp <- unlist(strsplit(cell, split = ";"))
+    temp <- sapply(temp, emojitranslate)
+    cell <- paste(temp, sep = ";", collapse =";")
+    results[i, 3] <- cell  
+  }
+}
+
+write.csv(results, '/data/final_translations_unicode.csv')
+```
+```{r basic emoji dick analysis (amt_results)}
+regex <- c("(\\W'\\w|\\w'\\W)|[^[:alnum:][:space:]']")
+
+bagofemoji <- c("")
+bagofemoji.l <- list()
+bagofwords <- c("")
+bagofwords.l <- list()
+
+amtresults.df <-  read.csv('/data/amt_results_unicode.csv', row.names = 1, stringsAsFactors = FALSE)
+for(i in 1:nrow(amtresults.df)){
+  cell = as.character(amtresults.df[i,3])
+  if (cell != ""){
+    temp <- unlist(strsplit(cell, split = ";"))
+    temp <- paste("U+", temp)
+    bagofemoji <- append(bagofemoji, temp)
+    bagofemoji.l[[i]] <- temp
+  }
+  sentence <- as.character(amtresults.df[i,2])
+  if (cell != ""){
+    sentence <- gsub(regex[1], "", sentence)
+    sentence <- unlist(strsplit(sentence, split=" "))
+    sentence <- tolower(sentence)
+    bagofwords <- append(bagofwords, sentence)
+    bagofwords.l[[i]] <- sentence
+  }
+}
+# Remove blanks
+ix <- which(bagofwords == "")
+bagofwords <- bagofwords[-ix]
+
+emojifreq.t <- sort(table(bagofemoji), decreasing = T)
+head(emojifreq.t, 15)
+
+# I don't have unicode memorized, so time to print to a file
+print.l <- list(names(head(emojifreq.t, 15)), head(emojifreq.t, 15))
+printer(print.l) #Defined in file writing chunk
+
+wordsfreq.t <- sort(table(bagofwords), decreasing = T)
+head(wordsfreq.t, 15)
+
+
+# Now doing the same thing without stopwords
+
+stopwords.v <- scan("/data/stopwords.txt", what='char', sep="\n")
+
+templist.v <- names(wordsfreq.t)
+ix <- which(templist.v %in% stopwords.v)
+wordsfreqstop.t <- wordsfreq.t[-ix]
+  
+wordsfreqstop.t <- sort(wordsfreqstop.t, decreasing = T)
+head(wordsfreqstop.t, 15)
+
+
+```
+
+
+```{r basic emoji dick analysis (final translation)}
+regex <- c("(\\W'\\w|\\w'\\W)|[^[:alnum:][:space:]']")
+
+bagofemoji <- c("")
+bagofemoji.l <- list()
+bagofwords <- c("")
+bagofwords.l <- list()
+
+amtresults.df <-  read.csv('/data/final_translations_unicode.csv', row.names = 1, stringsAsFactors = FALSE)
+for(i in 1:nrow(amtresults.df)){
+  cell = as.character(amtresults.df[i,3])
+  if (cell != ""){
+    temp <- unlist(strsplit(cell, split = ";"))
+    temp <- paste("U+", temp)
+    bagofemoji <- append(bagofemoji, temp)
+    bagofemoji.l[[i]] <- temp
+  }
+  sentence <- as.character(amtresults.df[i,2])
+  if (cell != ""){
+    sentence <- gsub(regex[1], "", sentence)
+    sentence <- unlist(strsplit(sentence, split=" "))
+    sentence <- tolower(sentence)
+    bagofwords <- append(bagofwords, sentence)
+    bagofwords.l[[i]] <- sentence
+  }
+}
+# Remove blanks
+ix <- which(bagofwords == "")
+bagofwords <- bagofwords[-ix]
+
+emojifreq.t <- sort(table(bagofemoji), decreasing = T)
+head(emojifreq.t, 15)
+
+# I don't have unicode memorized, so time to print to a file
+print.l <- list(names(head(emojifreq.t, 15)), head(emojifreq.t, 15))
+printer(print.l) #Defined in file writing chunk
+
+wordsfreq.t <- sort(table(bagofwords), decreasing = T)
+head(wordsfreq.t, 15)
+
+
+# Now doing the same thing without stopwords
+
+stopwords.v <- scan("/data/stopwords.txt", what='char', sep="\n")
+
+templist.v <- names(wordsfreq.t)
+ix <- which(templist.v %in% stopwords.v)
+wordsfreqstop.t <- wordsfreq.t[-ix]
+  
+wordsfreqstop.t <- sort(wordsfreqstop.t, decreasing = T)
+head(wordsfreqstop.t, 15)
+
+
+```
+
+
+
+```{r SVM Classification}
+#library("e1071")
+
+# Todo
+
+```
+
+```{r Sentiment Analysis}
+
+#bagofwords.l
+
+get_sentiment_afinn <- function(words){
+        result <- sum(dict[which(dict$word %in% words), "weight"])
+        return(result)
+}
+# Set up the dictionary
+dict<-read.delim("sentanalysis/AFINN-111.txt", header=FALSE, stringsAsFactors=FALSE) # reads a tab-separated file into adataframes
+names(dict) <- c('word', 'weight')
+# apply the get_sentiment_afinn function to the first chapter to test
+get_sentiment_afinn(bagofwords.l[8]) # score is 79, Ok, whatever.
+# apply the function to all the chapters in the list of bags of words
+chapters.df<-data.frame(sort(sapply(bagofwords.l,get_sentiment_afinn))) # sorted most negative to least
+# View(chapters.df) #most negative is vol. III, chapter 14; most positive is volume I, chapter 9. Huh, ok.
+# should those scores be normalized for chapter length? Maybe.
+# Build a new dataframe
+chapters.df<-data.frame(sapply(bagofwords.l,get_sentiment_afinn))
+# make it prettier
+library("dplyr")
+chapters.df<-add_rownames(chapters.df,"vol.ch")
+colnames(chapters.df)[2]<-"AFINNscore"
+# add new columns to calculate sentiment score per words in chapter
+chapters.df$wordsperchap<-sapply(bagofwords.l,length)
+chapters.df$scoredperwords<-chapters.df$AFINNscore/chapters.df$wordsperchap
+#View(chapters.df)
+# plot it to see sentiment vary over novel
+plot(rownames(chapters.df), chapters.df$scoredperwords, type="b", xaxt="n", xlab="Sentences", ylab="AFINN Score")
+title(main="Sentiment in 'Moby Dick'")
+axis(1,at=1:length(rownames(chapters.df)),
+     labels=chapters.df$vol.ch,las=2,cex.axis=.6)
+
+
+```
+
+```{r Reading in Keyword file}
+
+keywords.df <- read.csv('/data/EmojiKeyWords.csv', stringsAsFactors = FALSE)
+
+# Splits keywords on pipe symbol, adds them as a vector to a new column, column 6
+for(i in 1:nrow(keywords.df)){
+  cell = as.character(keywords.df[i,5])
+  if (i != ""){
+    temp <- strsplit(cell, split = "\\|")
+    temp <- list(trimws(unlist(temp)))
+    keywords.df[i, 6] <- list(temp)  
+  }
+}
+
+# To search the dataframe
+ 
+# testvector = unlist(list(c("face", "notface")))
+# grep("^face$", testvector)
+# 
+# keywords.df[grep("\"kiss mark\"",keywords.df$V6,ignore.case=TRUE),]
+# codes <- keywords.df[grep("\\btime\\b",keywords.df$V6,ignore.case=TRUE),][, 2]
+# 
+# do.call(mapply,c(any,lapply(keywords.df[, 6],grepl,pattern="joke",ignore.case=TRUE)))
+# keywords.df[do.call(mapply,c(any,lapply(keywords.df[, 6],grepl,pattern="joke",ignore.case=TRUE))),]
+```
+
+```{r input}
+text <- scan("/texts/sonnetXVI.txt", what="char", sep="\n")
+text.l <- strsplit(text, split = " ")
+
+# if word ends in s, search it without s as well
+
+# Looks at all consecutive groups of words of a certain lenght
+for (linenum in 1:length(text.l)){
+  line <- text.l[[linenum]]
+  for(length in 5:1){
+    if(length <= length(line)){
+      for (i in 1:(length(line)-(length-1))){
+        # textcnt(vector, method = "string", n=length)
+        # print(line[i:(i+(length-1))])
+        segment <- line[i:(i+(length-1))]
+        segment <-  gsub('[[:punct:] ]+','',segment)
+        segment <- paste(segment, collapse = " ")
+        searchterm <- paste("\"", segment, "\"", sep="")
+        codes <- ""
+        codes <- keywords.df[grep(searchterm, keywords.df$V6,ignore.case=TRUE),][, 2]
+        
+        if(grepl("s\\>", segment) ){
+          #print(segment)
+          segment <- substr(segment, 1, nchar(segment)-1)
+          searchterm <- paste("\"", paste(segment, collapse = " "), "\"", sep="")
+       
+          temp <- keywords.df[grep(searchterm, keywords.df$V6,ignore.case=TRUE),][, 2]
+          codes <- append(codes, temp)
+        }
+        
+        #print(codes)
+        # Replace found words with codes
+        
+        if(length(codes) > 0){
+          #print(codes[1])
+          
+          text.l[[linenum]][i] <- codes[1]
+          # begining chunk
+          if((i+(length-1))-1 < 1){
+            beginningchunk = NA
+          } else{
+            beginningchunk = line[1:(i-1)]
+          }
+          
+          #End chunk
+          if((i+(length-1))+1 > length(line)){
+            endchunk = NA
+          } else{
+            endchunk = line[((i+(length-1))+1):length(line)]
+          }
+          
+          # Which code could be randomized
+          newline <- c(beginningchunk, codes[1], endchunk)
+          newline <- newline[!is.na(newline)]
+          line <- newline
+          text.l[[linenum]] <- newline
+        }
+          
+        }
+      }
+    }
+  }  
+text.l
+
+
+# How to hit all of it
+# vector <- letters[]
+# lenght 4
+# vector[1:4]
+# vector[27:30]
+# length <- 20
+# if(length <= length(vector)){
+#   for (i in 1:(length(vector)-(length-1))){
+#     print(vector[i:(i+(length-1))])
+#   }
+# }
+
+# I am reminded I could have just used tau and textcnt
+# library(tau)
+# textcnt(vector, method = "string", n=30)
+
+
+
+
+  # line <- text.l[[3]]
+  # length <- 1
+  # i <- 1
+  #     #for (i in 1:(length(line)-(length-1))){
+  #       # print(line[i:(i+(length-1))])
+  #       segment <- line[i:(i+(length-1))]
+  #       searchterm <- paste("\\b", paste(segment, collapse = " "), "\\b", sep="")
+  #       codes <- ""
+  #       codes <- keywords.df[grep(searchterm, keywords.df$V6,ignore.case=TRUE),][, 2]
+  # 
+  #       if(length(codes) > 0){
+  #         print(codes[1])
+  #         
+  #         text.l[[linenum]][i] <- codes[1]
+  #         # begining chunk
+  #         if((i+(length-1))-1 < 1){
+  #           beginningchunk = ""
+  #         } else{
+  #           beginningchunk = line[1:(i-1)]
+  #         }
+  #         
+  #         #End chunk
+  #         if((i+(length-1))+1 > length(line)){
+  #           endchunk = ""
+  #         } else{
+  #           endchunk = line[((i+(length-1))+1):length(line)]
+  #         }
+  #         newline <- c(beginningchunk, codes[1], endchunk)
+  #         line <- newline
+  #         #text.l[[linenum]] <- newline
+  #       }
+```
+## How to write out Unicode from unicode point into text file in R
+Can be skipped, not needed to run code
+```{r writing out work}
+#https://stackoverflow.com/questions/38237358/how-to-write-unicode-string-to-text-file-in-r-windows
+str <- "1⃣"
+Encoding(str) # UTF-8
+cat(str, file="no-iconv") # Written wrongly as <U+1ECF>
+cat(iconv(str, to="UTF-8"), file="yes-iconv.txt")
+cat(iconv("\xF0\x9F\x98\x81", to="UTF-8"), file="yes-iconv.txt") # Written correctly as ỏ
+cat(iconv("\xf0\x9f\x87\xaf\xf0\x9f\x87\xb5", to="UTF-8"), file="yes-iconv.txt") #
+cat(iconv("0xE21C", from="UTF-16", to="UTF-8"), file="yes-iconv.txt")
+charToRaw("ỏ")
+
+# This works, but only for characters made of a single Unicode
+cat(iconv(intToUtf8(as.u_char("1F51F")), to="UTF-8"), file="yes-iconv.txt")
+
+cat(iconv(intToUtf8(paste(as.u_char("0031"), as.u_char("20E2")), allow_surrogate_pairs = TRUE), to="UTF-8"), file="yes-iconv.txt")
+
+intToUtf8(c(as.u_char("0031"), as.u_char("20E2")), allow_surrogate_pairs = TRUE)
+
+```
+
+```{r writing to file}
+
+# cat(c(iconv(intToUtf8(as.u_char("2747")), to="UTF-8"),iconv(intToUtf8(as.u_char("U+1F603")), to="UTF-8")), file="yes-iconv.txt")
+
+output <- c()
+for (line in text.l){
+  
+      for (i in line){
+        if(grepl("U\\+.*", i)){
+          
+          output <- append(output, iconv(intToUtf8(as.u_char(i)), to="UTF-8"))
+        }else{
+          output <- append(output, i)
+        }
+        output <- append(output, " ")
+        
+      }
+  output <- append(output, "\n")
+  
+}
+
+cat(output, file = "output.txt", sep = '')
+
+# Print, but it is now a function
+
+
+
+```
